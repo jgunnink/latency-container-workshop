@@ -1,0 +1,53 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        docker pull gcr.io/$PROJECT_ID/my_app:latest || exit 0 && \
+        docker pull gcr.io/$PROJECT_ID/my_app:builder || exit 0
+
+  # Build the application image
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        docker build \
+        --cache-from gcr.io/my_app-dev/my_app:latest \
+        -t gcr.io/my_app-dev/my_app:latest \
+        . && docker push gcr.io/$PROJECT_ID/my_app:latest
+
+  # Deploy to cloud run
+  - name: "gcr.io/cloud-builders/gcloud"
+    args:
+      [
+        "run",
+        "deploy",
+        "my_app-dev",
+        "--image",
+        "gcr.io/$PROJECT_ID/my_app:latest",
+        "--region",
+        "australia-southeast1",
+        "--platform",
+        "managed",
+      ]
+
+  # Switch traffic over to new version
+  - name: "gcr.io/cloud-builders/gcloud"
+    args:
+      [
+        "run",
+        "services",
+        "update-traffic",
+        "my_app-dev",
+        "--to-latest",
+        "--region",
+        "australia-southeast1",
+        "--platform",
+        "managed",
+      ]
+
+timeout: 800s
+images:
+  - "gcr.io/$PROJECT_ID/my_app:latest"
