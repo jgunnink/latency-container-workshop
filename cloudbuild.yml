@@ -4,8 +4,7 @@ steps:
     args:
       - "-c"
       - |
-        docker pull gcr.io/$PROJECT_ID/my_app:latest || exit 0 && \
-        docker pull gcr.io/$PROJECT_ID/my_app:builder || exit 0
+        docker pull gcr.io/$PROJECT_ID/my_app:latest || exit 0
 
   # Build the application image
   - name: "gcr.io/cloud-builders/docker"
@@ -14,8 +13,8 @@ steps:
       - "-c"
       - |
         docker build \
-        --cache-from gcr.io/my_app-dev/my_app:latest \
-        -t gcr.io/my_app-dev/my_app:latest \
+        --cache-from gcr.io/$PROJECT_ID/my_app:latest \
+        -t gcr.io/$PROJECT_ID/my_app:latest \
         . && docker push gcr.io/$PROJECT_ID/my_app:latest
 
   # Deploy to cloud run
@@ -24,7 +23,7 @@ steps:
       [
         "run",
         "deploy",
-        "my_app-dev",
+        "$PROJECT_ID",
         "--image",
         "gcr.io/$PROJECT_ID/my_app:latest",
         "--region",
@@ -40,7 +39,7 @@ steps:
         "run",
         "services",
         "update-traffic",
-        "my_app-dev",
+        "$PROJECT_ID",
         "--to-latest",
         "--region",
         "australia-southeast1",
