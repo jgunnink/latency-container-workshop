@@ -49,5 +49,3 @@ steps:
       ]
 
 timeout: 800s
-images:
-  - "gcr.io/$PROJECT_ID/my_app:latest"

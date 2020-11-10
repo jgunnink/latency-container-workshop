@@ -49,16 +49,16 @@ Once you've build the image, it's time to store it in GCR (Google Container Repo
   your project ID is, just type `gcloud projects list` from the command line, and the command will show all projects in
   your account. Grab the project ID and set it as an environment variable. For example:
 
-```
+```bash
 jgunnink@cloudshell:~/latency-container-workshop$ gcloud projects list
 PROJECT_ID          NAME               PROJECT_NUMBER
-containerworkshop   ContainerWorkshop  775632879874
+containerworkshop   ContainerWorkshop  123456789101
 ```
 
 - And set the environment variable with this command: `PROJECT_ID=containerworkshop`
 - Verify it was set with `echo $PROJECT_ID`. Eg:
 
-```
+```bash
 jgunnink@cloudshell:~/latency-container-workshop$ PROJECT_ID=containerworkshop
 jgunnink@cloudshell:~/latency-container-workshop$ echo $PROJECT_ID
 containerworkshop
@@ -92,3 +92,150 @@ starts, it will be a little slower than subsequent starts.
 
 Your URL will look something like: `https://container-workshop-f4hgxdldqa-ts.a.run.app` which you can visit and see your
 deployed container running serverlessly in production.
+
+---
+
+## It's now time for the morning tea break
+
+If you're here well before the 10:30 break, you're free to continue with the workshop, think about your entry to the
+competition, or help a nearby person who looks like they need it!
+
+---
+
+Now that we're back from morning tea, the fun starts - automating deployments and testing traffic splitting. With git!
+
+### 5. Connect Cloudbuild
+
+In Github, navigate to <https://github.com/marketplace> and type "google" into the search box. In the results, look for
+"Google Cloud Build" and add it to your account. You'll be taken to the console to authorise the application for use
+with your Google account.
+
+Then back in Github, go to configure your installation. If you're lost, you can continue from here:
+<https://github.com/settings/installations>. Next to Google Cloud Build, click the configure button and under the
+"Repository Access" section either add "All repositories" or select repos and choose the fork you've made of the
+"latency-container-workshop" and add the repo by clicking save.
+
+You'll be taken to google cloud to confirm the link. You'll select the project, then the repo to link to that project.
+
+Finally you can configure the trigger settings. Here you would set when you wanted cloudbuild to fire. Click next to
+save the default for now, you can change it later.
+
+### 6. Permissions for Cloudbuild
+
+In order for cloudbuild to deploy and manage our cloudrun containers, we need to give it permission to do so. Let's get
+some more project information into our environment variables.
+
+```bash
+jgunnink@cloudshell:~/latency-container-workshop$ gcloud projects list
+PROJECT_ID          NAME               PROJECT_NUMBER
+containerworkshop   ContainerWorkshop  123456789101
+```
+
+Let's note again the PROJECT_ID and PROJECT_NUMBER, and store them for reuse later.
+
+```bash
+# Config
+PROJECT_ID=containerworkshop
+PROJECT_NUMBER=your-gcp-project-number
+
+# Grant the Cloud Run Admin role to the Cloud Build service account
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member "serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com" \
+  --role roles/run.admin
+
+# Grant the IAM Service Account User role to the Cloud Build service account on the Cloud Run runtime service account
+gcloud iam service-accounts add-iam-policy-binding \
+  $PROJECT_NUMBER-compute@developer.gserviceaccount.com \
+  --member="serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+```
+
+It's worth noting that we've given Admin permissions to cloudbuild to manage our cloud run service. In practice, it's
+better to provide specific permissions that you intend cloudbuild to use.
+
+### 7. The cloudbuild.yml file
+
+In the root of this repository you'll see a cloudbuild.yml file. In it, there are some instructions which tell our
+cloudbuild instance how to build our application. Right now, it's configured to deploy a new version and then send all
+traffic (i.e. 100%) to the new version once the health checks are passing.
+
+Let's change the command to deploy new versions of the container, but not send any traffic to them just yet.
+
+In the cloudbuild.yml file look for the deployment step, and the argument to `--no-traffic` as seen here:
+
+```yaml
+# Deploy to cloud run
+- name: "gcr.io/cloud-builders/gcloud"
+  args: [
+      "run",
+      "deploy",
+      "$PROJECT_ID",
+      "--image",
+      "gcr.io/$PROJECT_ID/my_app:latest",
+      "--no-traffic", # Add this line
+      "--region",
+      "australia-southeast1",
+      "--platform",
+      "managed",
+    ]
+```
+
+To read more about how this works, check out the documentation here:
+<https://cloud.google.com/sdk/gcloud/reference/run/deploy#--no-traffic>
+
+> Setting this flag assigns any traffic assigned to the LATEST revision to the specific revision bound to LATEST before
+> the deployment. The effect is that the revision being deployed will not receive traffic.
+>
+> After a deployment with this flag the LATEST revision will not receive traffic on future deployments. To restore
+> sending traffic to the LATEST revision by default, run the `gcloud run services update-traffic` command with
+> `--to-latest`.
+
+Now when we make a change to our code, cloudbuild will build the image, deploy it, but cloudrun won't send any traffic
+to it.
+
+Let's change that.
+
+```yaml
+# Switch 50% of all traffic over to the latest version.
+- name: "gcr.io/cloud-builders/gcloud"
+  args: [
+      "run",
+      "services",
+      "update-traffic",
+      "$PROJECT_ID",
+      "--to-latest", # Delete this line
+      "--to-revisions=LATEST=50", # Add this line
+      "--region",
+      "australia-southeast1",
+      "--platform",
+      "managed",
+    ]
+```
+
+### 8. Make a small change
+
+In the folders in the repo, navigate to the file at:
+
+`app > views > welcome > index.html.erb`
+
+Make a small change here, for example, change the text `version 1` to `version 2`.
+
+Let's save all files make a commit and push our changes to our repo.
+
+In the cloudbuild console you'll see cloudbuild running! It will build and deploy your app with no traffic initially,
+then make a change to route 50% of the traffic over.
+
+In the cloud run console you should see two versions of your application running. Test it by accessing the URL of your
+application and validating that version 1 and 2 show up! (Keep hitting refresh if you don't see it straight away.)
+
+In the cloud run console you'll be able to manually adjust the percentage of traffic between versions, feel free to play
+around with it, if you like.
+
+## End
+
+Congratulations, you've made it to the end of the workshop. If you've finished early, below you'll find some more tasks
+which you can try to extend what you've learned.
+
+## Bonus tasks
+
+Todo.
