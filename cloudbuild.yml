@@ -26,13 +26,14 @@ steps:
         "$PROJECT_ID",
         "--image",
         "gcr.io/$PROJECT_ID/my_app:latest",
+        "--no-traffic",
         "--region",
         "australia-southeast1",
         "--platform",
         "managed",
       ]
 
-  # Switch traffic over to new version
+  # Switch 50% of all traffic over to the latest version.
   - name: "gcr.io/cloud-builders/gcloud"
     args:
       [
@@ -40,7 +41,7 @@ steps:
         "services",
         "update-traffic",
         "$PROJECT_ID",
-        "--to-latest",
+        "--to-revisions=LATEST=50",
         "--region",
         "australia-southeast1",
         "--platform",
