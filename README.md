@@ -30,7 +30,8 @@ If you prefer to use cloud shell, click the terminal icon at the top right of an
 like this: `>_` surrounded by a white square.
 
 - Create a fork of the demo repository available here: `https://github.com/jgunnink/latency-container-workshop`
-- Clone the repository (either to your local machine or cloud shell).
+- Clone the repository (either to your local machine or cloud shell). If you need setup SSH Git Auth, you can follow the following steps: 
+https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
 - `cd` into the directory, and build the image with the following command: `docker build -t my_app:latest .`
 - The console may "hang" or appear to do nothing. If this happens, wait 2-3 minutes, before proceeding. The image is
   building but the web-interface can take time to catchup
