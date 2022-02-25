@@ -1,6 +1,6 @@
-# Latency 2020 Demo Application
+# Ruby on Rails on Cloud Run!
 
-This is a demo application for the latency workshop for Serverless, Cloud-Native Containers!
+This repo was originally made as a workshop for a conference in Perth in 2020, Latency Conf.
 
 ## What's in this repository
 
